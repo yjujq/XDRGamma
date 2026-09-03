@@ -14,13 +14,21 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     private let toggleItem = NSMenuItem()
     private let loginItem = NSMenuItem()
     private let thermalPrefItem = NSMenuItem()
+    private let hotkeyItem = NSMenuItem()
     private let statusLineItem = NSMenuItem()
     private let thermalLineItem = NSMenuItem()
+    private var hotkey: GlobalHotkey?
 
     init(controller: GammaController) {
         self.controller = controller
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
+
+        hotkey = GlobalHotkey { [weak controller] in controller?.toggle() }
+        if Settings.shared.hotkeyEnabled, hotkey?.register() == false {
+            // Taken by something else. Remember that so the menu tells the truth.
+            Settings.shared.hotkeyEnabled = false
+        }
 
         buildMenu()
         updateUI()
@@ -75,6 +83,13 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         thermalPrefItem.action = #selector(thermalPrefTapped)
         menu.addItem(thermalPrefItem)
 
+        hotkeyItem.title = "Shortcut \(GlobalHotkey.displayName)"
+        hotkeyItem.target = self
+        hotkeyItem.action = #selector(hotkeyTapped)
+        hotkeyItem.toolTip = "Toggle the boost from anywhere — useful before HDR video, "
+            + "which the boost clips."
+        menu.addItem(hotkeyItem)
+
         let hideIconItem = NSMenuItem(
             title: "Hide Menu Bar Icon",
             action: #selector(hideIconTapped),
@@ -113,6 +128,8 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         loginItem.toolTip = "Launch at login: \(LoginItem.localizedStatus)"
 
         thermalPrefItem.state = Settings.shared.disableOnThermalPressure ? .on : .off
+
+        hotkeyItem.state = (hotkey?.isRegistered ?? false) ? .on : .off
 
         statusLineItem.title = controller.statusLine()
         thermalLineItem.title = controller.thermalLine()
@@ -158,6 +175,30 @@ final class StatusMenu: NSObject, NSMenuDelegate {
 
     @objc private func sliderChanged() {
         controller.setUserBrightness(slider.floatValue)
+    }
+
+    @objc private func hotkeyTapped() {
+        guard let hotkey else { return }
+
+        if hotkey.isRegistered {
+            hotkey.unregister()
+            Settings.shared.hotkeyEnabled = false
+        } else if hotkey.register() {
+            Settings.shared.hotkeyEnabled = true
+        } else {
+            Settings.shared.hotkeyEnabled = false
+            NSApp.activate(ignoringOtherApps: true)
+            let alert = NSAlert()
+            alert.messageText = "\(GlobalHotkey.displayName) is already taken"
+            alert.informativeText = """
+            Another app has claimed this shortcut. Release it there and try \
+            again — XDRGamma uses a fixed combination.
+            """
+            alert.alertStyle = .warning
+            alert.addButton(withTitle: "OK")
+            alert.runModal()
+        }
+        updateUI()
     }
 
     @objc private func thermalPrefTapped() {

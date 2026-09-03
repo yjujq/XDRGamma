@@ -15,6 +15,7 @@ final class Settings {
         static let userBrightness = "userBrightness"
         static let disableOnThermalPressure = "disableOnThermalPressure"
         static let hideStatusIcon = "hideStatusIcon"
+        static let hotkeyEnabled = "hotkeyEnabled"
     }
 
     private let defaults = UserDefaults.standard
@@ -24,7 +25,8 @@ final class Settings {
             Key.enabled: false,
             Key.userBrightness: 1.0,
             Key.disableOnThermalPressure: true,
-            Key.hideStatusIcon: false
+            Key.hideStatusIcon: false,
+            Key.hotkeyEnabled: true
         ])
     }
 
@@ -49,5 +51,11 @@ final class Settings {
     var hideStatusIcon: Bool {
         get { defaults.bool(forKey: Key.hideStatusIcon) }
         set { defaults.set(newValue, forKey: Key.hideStatusIcon) }
+    }
+
+    /// System-wide shortcut for toggling the boost.
+    var hotkeyEnabled: Bool {
+        get { defaults.bool(forKey: Key.hotkeyEnabled) }
+        set { defaults.set(newValue, forKey: Key.hotkeyEnabled) }
     }
 }

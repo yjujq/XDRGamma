@@ -64,6 +64,7 @@ has actually entered HDR mode.
 | `GammaController.swift` | State machine: HDR ramp-up, factor, fade, hold |
 | `StatusMenu.swift` | Menu bar UI |
 | `AppDelegate.swift` | Gamma restore safety nets |
+| `Hotkey.swift` | System-wide shortcut for toggling the boost |
 | `ThermalMonitor.swift` | Thermal throttling watch |
 | `LoginItem.swift` | Launch at login via `SMAppService` |
 | `Settings.swift` | `UserDefaults` storage |
@@ -128,9 +129,34 @@ the icon and clears the setting. A dialog explains this before hiding.
 The Dock icon is hidden separately and always, via `LSUIElement` in
 `Info.plist` and `setActivationPolicy(.accessory)`.
 
+## The shortcut, and why it exists
+
+**⌃⌥⌘B** toggles the boost from anywhere. Turn it off before an HDR film, back
+on afterwards, without going to the menu bar.
+
+This is deliberately a manual switch rather than automatic detection. The gamma
+technique claims the display's entire EDR headroom for SDR content, which is the
+same headroom HDR video needs for its highlights — so the two cannot coexist,
+and the boost clips HDR.
+
+Handing the headroom back automatically is not possible. macOS reports one
+headroom value for the whole display, not per app; there is no arbitration
+between apps and no signal that anything else wants the range. SkyLight has
+promising-looking constants (`SLSBrightnessNotificationRequestEDR`,
+`SLSBrightnessRequestEDRHeadroom`) but nothing is delivered on the Darwin,
+distributed or local notification centres — the traffic stays inside SkyLight.
+Worse, the EDR trigger switches the whole screen into EDR mode, so other apps'
+HDR content is already being presented extended while our gamma table crushes
+it, and the headroom reading looks identical either way.
+
+BetterDisplay, which supports every method there is, also leaves this manual.
+
+The combination is fixed. If another app already owns it, **Shortcut ⌃⌥⌘B** in
+the menu stays unchecked and says so.
+
 ## Not done yet
 
-- Global hotkeys and F1/F2 interception
+- F1/F2 brightness key interception
 - Pausing on battery and at low charge
 - Incompatible-app monitoring
 
