@@ -71,25 +71,10 @@ has actually entered HDR mode.
 
 ## Gamma safety
 
-A modified gamma table is **not** the landmine it looks like. Measured on
-macOS 26.5 (Mac15,7): WindowServer drops the table as soon as the process that
-set it goes away. Verified by crashing the running app with `SIGSEGV` and
-killing it with `SIGKILL` — which no handler can intercept — and reading the
-white point back with `CGGetDisplayTransferByTable` before and after. It
-returned to 1.0 both times, with the crash handlers removed for the test.
-
-So there is deliberately no `sigaction` net for `SIGSEGV`/`SIGABRT` and friends:
-it would buy nothing, and `CGDisplayRestoreColorSyncSettings()` talks to
-WindowServer, which is not something to call from a crash handler.
-
-What remains is the tidy path, not a rescue: `applicationWillTerminate` and GCD
-signal sources for `SIGINT`/`SIGTERM`/`SIGHUP` put back the *captured* table
-instead of resetting the whole ColorSync state, and `atexit` backs them up.
-
-One caveat on the measurement: a plain command-line tool that scales the table
-and is then killed does **not** always get the same treatment — results there
-were inconsistent between runs. The automatic revert was reproducible for a
-real `NSApplication`, which is what this app is.
+A modified gamma table **outlives the process**. If the app dies without
+restoring it, the screen stays blown out until reboot. Hence three nets:
+`applicationWillTerminate`, handlers for `SIGINT`/`SIGTERM`/`SIGHUP`, and
+`atexit` — all calling `CGDisplayRestoreColorSyncSettings()`.
 
 To reset by hand if something goes wrong:
 

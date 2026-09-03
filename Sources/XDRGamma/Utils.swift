@@ -49,13 +49,8 @@ let sdr600NitsDevices: Set<String> = [
 
 /// Returns (referenceEdr, bonusGamma) for a display.
 ///
-/// referenceEdr is the headroom that should appear at the top of the system
-/// brightness slider (1600 nits peak / 500 nits SDR white = 3.2 for the
-/// built-in XDR panel). Nothing reads it at the moment: headroom turned out
-/// not to track the slider on macOS 26.5, so `gammaFactor` no longer tapers
-/// against it. Kept because it is the panel constant the taper would need if
-/// a way to read the slider through public API ever appears.
-///
+/// referenceEdr is the headroom at the top of the system brightness slider
+/// (1600 nits peak / 500 nits SDR white = 3.2 for the built-in XDR panel).
 /// bonusGamma is the maximum gamma gain, so the boost ceiling is 1 + bonusGamma.
 func screenReferenceGamma(_ screen: NSScreen) -> (referenceEdr: Float, bonusGamma: Float) {
     if screen.isBuiltin {

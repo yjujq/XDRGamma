@@ -30,8 +30,6 @@ final class GammaController {
     private let maxConsecutiveFailures = 3
     /// White point drift past which we reapply the table.
     private let gammaTolerance: CGGammaValue = 0.003
-    /// Multiplier change below which reapplying the table is pointless.
-    private let factorEpsilon: Float = 0.005
     private let defaultPollInterval: Duration = .milliseconds(500)
     private let fastPollInterval: Duration = .milliseconds(16)
     private let fastPollDuration: TimeInterval = 30
@@ -195,11 +193,6 @@ final class GammaController {
         triggers.removeAll()
 
         readyDisplays.removeAll()
-
-        // Otherwise re-enabling would run into a cooldown left over from the
-        // previous attempt and sit there silently for up to 30 seconds.
-        failureCounts.removeAll()
-        cooldownUntil.removeAll()
     }
 
     /// Emergency reset — on quit and on signals.
@@ -221,14 +214,7 @@ final class GammaController {
         savedTables[id] = table
 
         let trigger = EDRTriggerController(screen: screen)
-        trigger.open { [weak self] in
-            // The panel can only start ramping once the HDR pixel is really on
-            // screen. Poll hard from here so we catch the ramp promptly
-            // instead of sitting on the 500 ms interval.
-            guard let self, self.isActive else { return }
-            log.info("EDR trigger presented on display \(id)")
-            self.fastPollUntil = Date().addingTimeInterval(self.fastPollDuration)
-        }
+        trigger.open()
         triggers[id] = trigger
 
         engageTasks[id]?.cancel()
@@ -313,29 +299,18 @@ final class GammaController {
 
     // MARK: - Computing and applying the multiplier
 
-    /// How far to push the table, from the intensity slider, capped by the
-    /// headroom the system has actually granted.
-    ///
-    /// This used to taper the boost against current headroom, on the
-    /// assumption that headroom sits near referenceEdr at the top of the
-    /// system brightness slider and grows as the slider comes down — so a low
-    /// slider would need little help. That assumption does not hold here.
-    /// Measured on Mac15,7 / macOS 26.5: with the EDR trigger up, headroom
-    /// reads a flat 16.0 at every slider position from 100% down to 25%, and
-    /// 16.0 is exactly the maximumEdr the taper divided by. The taper term
-    /// collapsed to zero and the factor came out at exactly 1.0 — the app held
-    /// the panel in HDR mode, logged "applying gamma", and changed nothing.
-    ///
-    /// There is no public API for the slider position (IODisplayGetFloatParameter
-    /// does not work on the Apple Silicon internal panel), so the taper cannot
-    /// be rebuilt honestly. The intensity slider governs instead, which is what
-    /// it was there for; headroom is kept as a ceiling so we never ask for more
-    /// than the panel is currently granting.
+    /// The higher the headroom, the lower the system brightness slider sits,
+    /// and the less boost is needed. At the top of the slider headroom equals
+    /// referenceEdr and we hand over the whole bonusGamma.
     private func gammaFactor(for screen: NSScreen) -> Float {
-        let (_, bonusGamma) = screenReferenceGamma(screen)
-        let wanted = 1 + bonusGamma * userBrightness
-        let granted = Float(screen.currentEDRHeadroom)
-        return max(1, min(wanted, granted))
+        let (referenceEdr, bonusGamma) = screenReferenceGamma(screen)
+        let maximumEdr: Float = 16.0
+        guard maximumEdr > referenceEdr else { return 1 }
+
+        let currentEdr = Float(screen.currentEDRHeadroom)
+        let clamped = min(max(currentEdr, referenceEdr), maximumEdr)
+        let full = 1 + bonusGamma * (1 - (clamped - referenceEdr) / (maximumEdr - referenceEdr))
+        return 1 + (full - 1) * userBrightness
     }
 
     private func applyFactor(displayId: CGDirectDisplayID, animated: Bool) {
@@ -346,15 +321,9 @@ final class GammaController {
         let target = gammaFactor(for: screen)
         let current = table.appliedFactor
 
-        // Nothing to change, nothing to write. The integrity poll comes
-        // through here every 2s; without this check it pushed a full table at
-        // WindowServer for no reason. A table reset by the system is caught
-        // separately, by hasDrifted, so skipping here loses nothing.
-        guard abs(target - current) > factorEpsilon else { return }
-
         fadeTasks[displayId]?.cancel()
 
-        guard animated else {
+        guard animated, abs(target - current) > 0.005 else {
             table.apply(to: displayId, factor: target)
             return
         }
@@ -458,7 +427,7 @@ final class GammaController {
         if isThermallySuspended {
             return "Paused: \(thermal.localizedState)"
         }
-        guard let screen = diagnosticsScreen else { return "No display found" }
+        guard let screen = NSScreen.main else { return "No display found" }
         let current = String(format: "%.2f", screen.currentEDRHeadroom)
         let potential = String(format: "%.2f", screen.potentialEDRHeadroom)
         let factor = screen.displayId.flatMap { savedTables[$0]?.appliedFactor } ?? 1.0
@@ -468,20 +437,5 @@ final class GammaController {
 
     func thermalLine() -> String {
         "Temperature: \(thermal.localizedState)"
-    }
-
-    /// The display the numbers should describe: the one actually being
-    /// boosted. `NSScreen.main` is the screen holding keyboard focus, which
-    /// with an external monitor attached is routinely a display we never
-    /// touched — it would report a stranger's headroom and gamma ×1.00.
-    /// Sorted so the choice does not wander between two boosted panels.
-    private var diagnosticsScreen: NSScreen? {
-        if let id = readyDisplays.sorted().first, let screen = screen(for: id) {
-            return screen
-        }
-        if let id = savedTables.keys.sorted().first, let screen = screen(for: id) {
-            return screen
-        }
-        return compatibleScreens.first ?? NSScreen.main
     }
 }

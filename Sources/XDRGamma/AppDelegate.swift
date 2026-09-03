@@ -50,11 +50,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func installSafetyNets() {
         atexit(emergencyRestore)
 
-        // Only the orderly signals are worth handling. A crash needs no net:
-        // WindowServer drops the gamma table when the setting process dies —
-        // measured on macOS 26.5 for SIGSEGV and for SIGKILL, which cannot be
-        // caught anyway. Handling crash signals here would buy nothing and
-        // cost a non-async-signal-safe WindowServer call on the crash path.
         for sig in [SIGINT, SIGTERM, SIGHUP] {
             signal(sig, SIG_IGN)
             let source = DispatchSource.makeSignalSource(signal: sig, queue: .main)
