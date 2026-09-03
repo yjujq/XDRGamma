@@ -41,7 +41,10 @@ final class GammaController {
     private let engageFraction: Float = 0.97
     private let releaseFraction: Float = 0.90
     private let defaultPollInterval: Duration = .milliseconds(500)
-    private let fastPollInterval: Duration = .milliseconds(16)
+    /// Used while the panel is expected to be ramping. It was 16 ms, which is
+    /// 60 Hz for half a minute after every screen change and every wake; the
+    /// ramp takes seconds, so nothing was gained by looking that often.
+    private let fastPollInterval: Duration = .milliseconds(100)
     private let fastPollDuration: TimeInterval = 30
     private let integrityPollInterval: Duration = .seconds(2)
 
@@ -369,8 +372,21 @@ final class GammaController {
                                    bonusGamma: Float, currentEdr: Float) -> Float {
         guard let id = screen.displayId, currentEdr > 0 else { return 1 }
 
-        let fraction = min(1, referenceEdr / currentEdr)
         let wasEngaged = atFullBrightness.contains(id)
+        let boosted = 1 + bonusGamma * userBrightness
+
+        // referenceEdr is the *smallest* headroom the panel ever reports, since
+        // it belongs to the brightest SDR white it will produce. Reading less
+        // than that means the panel is still ramping into HDR mode and the
+        // number does not describe the slider yet — the ratio below would clamp
+        // to 1.0 and look exactly like full brightness. Deciding on that gave a
+        // visible blip of boost at startup with the slider anywhere at all, so
+        // hold the previous answer until the reading means something.
+        guard currentEdr >= referenceEdr * 0.98 else {
+            return wasEngaged ? boosted : 1
+        }
+
+        let fraction = min(1, referenceEdr / currentEdr)
         let engaged = wasEngaged ? fraction >= releaseFraction : fraction >= engageFraction
 
         if engaged != wasEngaged {
@@ -378,7 +394,7 @@ final class GammaController {
             if engaged { atFullBrightness.insert(id) } else { atFullBrightness.remove(id) }
         }
 
-        return engaged ? 1 + bonusGamma * userBrightness : 1
+        return engaged ? boosted : 1
     }
 
     private func applyFactor(displayId: CGDirectDisplayID, animated: Bool) {

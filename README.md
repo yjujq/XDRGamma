@@ -93,6 +93,31 @@ has actually entered HDR mode.
 | `Settings.swift` | `UserDefaults` storage |
 | `Utils.swift` | Panel constants, model detection |
 
+## Cost
+
+The whole app runs at about **0.24% CPU**, and nearly all of that is the EDR
+trigger — the gamma table is written only when the factor actually changes, and
+the integrity poll is cheap.
+
+Getting there was mostly one measurement. The trigger used to run its `MTKView`
+at 5 fps and cost 1.75% on its own, which is essentially everything the process
+spent. Dropping to 1 fps only brought that to 1.15%: the frames were never the
+expense. `MTKView`'s display link ticks at the display's refresh rate whatever
+`preferredFramesPerSecond` says — the property only decides which ticks draw —
+so a low frame rate still pays for a 120 Hz thread.
+
+Pausing the view and presenting from a timer instead removes the display link
+altogether, and the trigger needs far fewer frames than it looks: measured on
+Mac15,7, **one frame every ten seconds** held the granted headroom with no dip.
+The timer runs at one second, for margin, in `.common` run loop modes so an open
+menu cannot stall it.
+
+None of this matters next to the panel. At 1000 nits the backlight dwarfs a
+couple of percent of one core — if the goal is battery, the lever is whether the
+boost is engaged at all, which is what **Only at Full Brightness** is for. The
+CPU work matters for a different reason: a background agent should not be waking
+the processor around the clock for a boost that is not switched on.
+
 ## Gamma safety
 
 A modified gamma table **outlives the process**. If the app dies without

@@ -43,10 +43,18 @@ final class EDRTriggerView: MTKView, MTKViewDelegate {
         colorspace = CGColorSpace(name: CGColorSpace.extendedLinearSRGB)
         clearColor = MTLClearColorMake(clearValue, clearValue, clearValue, 1.0)
 
-        // Headroom is revoked when the layer goes idle, so keep redrawing —
-        // just cheaply.
-        preferredFramesPerSecond = 5
-        isPaused = false
+        // Headroom is revoked when the layer goes idle, so the pixel has to
+        // keep being presented — but far less often than it looks. Measured on
+        // Mac15,7: one frame every ten seconds held the granted headroom with
+        // no dip at all. A second is used here, for margin.
+        //
+        // The view is paused and driven by a timer rather than left on a low
+        // preferredFramesPerSecond, because MTKView's display link ticks at the
+        // display's refresh rate either way and that property only decides
+        // which ticks draw — so a low frame rate still pays for a 120 Hz
+        // thread. Measured in isolation, one trigger, CPU of the whole process:
+        // 5 fps cost 1.75%, 1 fps 1.15%, and this arrangement 0.20%.
+        isPaused = true
         enableSetNeedsDisplay = false
 
         if let metalLayer = layer as? CAMetalLayer {
@@ -58,6 +66,30 @@ final class EDRTriggerView: MTKView, MTKViewDelegate {
 
     required init(coder: NSCoder) {
         fatalError("init(coder:) is not supported")
+    }
+
+    deinit { pulse?.invalidate() }
+
+    /// How often the trigger pixel is re-presented. See the note in init.
+    private static let pulseInterval: TimeInterval = 1
+    private var pulse: Timer?
+
+    /// Present one frame now, then keep presenting on a slow timer.
+    func startPulsing() {
+        guard pulse == nil else { return }
+        draw()
+        // .common rather than .default: a tracked menu would otherwise stall
+        // the timer, and headroom could lapse while the menu is open.
+        let timer = Timer(timeInterval: EDRTriggerView.pulseInterval, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.draw() }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        pulse = timer
+    }
+
+    func stopPulsing() {
+        pulse?.invalidate()
+        pulse = nil
     }
 
     func setClearValue(_ value: Double) {
@@ -143,6 +175,7 @@ final class EDRTriggerController {
         view.onFirstFrameRendered = onFirstFrame
         reposition(screen: screen)
         window.orderFrontRegardless()
+        view.startPulsing()
     }
 
     func update(screen: NSScreen) {
@@ -152,6 +185,7 @@ final class EDRTriggerController {
     }
 
     func close() {
+        view.stopPulsing()
         window.orderOut(nil)
         window.close()
     }
