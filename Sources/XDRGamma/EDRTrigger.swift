@@ -15,7 +15,10 @@ import MetalKit
 final class EDRTriggerView: MTKView, MTKViewDelegate {
 
     private var commandQueue: MTLCommandQueue?
+    /// Only ever touched on the main thread: MTKView drives draw() there, and
+    /// the completion handler hops back before setting it.
     private var didRenderFirstFrame = false
+    /// Called once, when the first frame has actually reached the screen.
     var onFirstFrameRendered: (() -> Void)?
 
     init(clearValue: Double) {
@@ -72,12 +75,19 @@ final class EDRTriggerView: MTKView, MTKViewDelegate {
         // Empty pass: all we need is the clear color and a present.
         encoder.endEncoding()
         buffer.present(drawable)
-        buffer.addCompletedHandler { [weak self] _ in
-            DispatchQueue.main.async {
-                guard let self, !self.didRenderFirstFrame else { return }
-                self.didRenderFirstFrame = true
-                self.onFirstFrameRendered?()
-                self.onFirstFrameRendered = nil
+
+        // Only worth a completion handler until the first frame lands. This
+        // view redraws forever at 5 fps; without the guard every one of those
+        // frames paid for a handler plus a hop to the main queue to re-check a
+        // flag that never changes again.
+        if !didRenderFirstFrame {
+            buffer.addCompletedHandler { [weak self] _ in
+                DispatchQueue.main.async {
+                    guard let self, !self.didRenderFirstFrame else { return }
+                    self.didRenderFirstFrame = true
+                    self.onFirstFrameRendered?()
+                    self.onFirstFrameRendered = nil
+                }
             }
         }
         buffer.commit()
@@ -126,7 +136,11 @@ final class EDRTriggerController {
         window.contentView = view
     }
 
-    func open() {
+    /// `onFirstFrame` fires once the trigger pixel has actually been
+    /// presented — which is the earliest moment the panel can begin granting
+    /// headroom. Ordering the window on screen is not that moment.
+    func open(onFirstFrame: (() -> Void)? = nil) {
+        view.onFirstFrameRendered = onFirstFrame
         reposition(screen: screen)
         window.orderFrontRegardless()
     }
