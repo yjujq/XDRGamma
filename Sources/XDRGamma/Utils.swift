@@ -47,18 +47,37 @@ let sdr600NitsDevices: Set<String> = [
     "Mac17,2", "Mac17,6", "Mac17,7", "Mac17,8", "Mac17,9"
 ]
 
+/// Peak luminance of an XDR panel: small areas, short bursts.
+private let peakNits: Float = 1600
+
+/// What the panel can hold indefinitely across the whole screen — Apple's
+/// sustained XDR rating, and the ceiling this app aims for. Going past it would
+/// only be honoured in bursts, and would heat the panel for nothing.
+private let sustainedNits: Float = 1000
+
 /// Returns (referenceEdr, bonusGamma) for a display.
 ///
-/// referenceEdr is the headroom at the top of the system brightness slider
-/// (1600 nits peak / 500 nits SDR white = 3.2 for the built-in XDR panel).
-/// bonusGamma is the maximum gamma gain, so the boost ceiling is 1 + bonusGamma.
+/// Both are derived from two facts about the panel rather than hand-tuned.
+///
+/// referenceEdr is the headroom the system reports at the top of the brightness
+/// slider, which is exactly peak ÷ SDR white. Confirmed by measurement on
+/// Mac15,7: at 100% the slider reports 2.667, and 1600 ÷ 600 = 2.667.
+///
+/// bonusGamma is how far past SDR white the table may be scaled, so the ceiling
+/// is (1 + bonusGamma) × SDR white. Aiming at the sustained rating lands every
+/// panel on the same 1000 nits: ×1.67 up from 600, ×2.0 up from 500. Both stay
+/// inside the headroom actually granted at full brightness (2.67 and 3.2), so
+/// the boost never asks for more than the display is offering.
 func screenReferenceGamma(_ screen: NSScreen) -> (referenceEdr: Float, bonusGamma: Float) {
-    if screen.isBuiltin {
-        if let model = modelIdentifier(), sdr600NitsDevices.contains(model) {
-            return (2.66, 0.50)
-        }
-        return (3.2, 0.59)
+    // Whether this panel's SDR white sits at 600 nits or 500. External XDR
+    // displays are treated as 600, which is what the previous hand-tuned
+    // reference headroom of 2.66 implied for them.
+    let sdrWhiteNits: Float
+    if screen.isBuiltin, let model = modelIdentifier(), !sdr600NitsDevices.contains(model) {
+        sdrWhiteNits = 500
+    } else {
+        sdrWhiteNits = 600
     }
-    // Pro Display XDR / Studio Display
-    return (2.66, 0.6)
+
+    return (peakNits / sdrWhiteNits, sustainedNits / sdrWhiteNits - 1)
 }
