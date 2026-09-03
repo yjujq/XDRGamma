@@ -19,9 +19,33 @@ Two parts:
    `CGSetDisplayTransferByTable`. Values above 1.0 reach into that headroom —
    which is what gives SDR content its extra brightness.
 
-The factor is derived from current headroom: the higher it is, the lower the
-system brightness slider sits and the less boost is needed. At the top of the
-slider the full `bonusGamma` is handed over.
+## Where the boost appears
+
+By default the display is left completely stock until the brightness slider
+reaches the top, and only then does the extra range appear — so the boost
+*extends* the slider rather than rescaling it. Measured on Mac15,7:
+
+| Slider | SDR white as a fraction of rated | Gamma |
+|---|---|---|
+| 95% | 0.865 | ×1.0000 — stock |
+| 97% | 0.916 | ×1.0000 — stock |
+| **99%** | 0.971 | **×1.6667 — boost** |
+| 100% | 1.000 | ×1.6667 — boost |
+
+Slider position is read from headroom rather than from any brightness API:
+headroom is peak ÷ current SDR white and `referenceEdr` is peak ÷ rated SDR
+white, so dividing one by the other gives current white as a fraction of the
+panel's rating, exactly 1.0 at the top.
+
+It engages at 0.97 and lets go below 0.90 — coming back down the boost holds
+through 98% and 97% and releases at 96%. That gap is deliberate: with a single
+threshold, a rounding wobble would flip the boost on and off. Crossing it fades
+over 240 ms rather than jumping, which would read as a flash.
+
+Turn **Only at Full Brightness** off in the menu for the older behaviour, where
+the boost blends in gradually across the whole slider: the factor follows
+current headroom, so the lower the slider sits the less boost is applied, and
+the full `bonusGamma` arrives only at the top.
 
 ## Gamma technique: trade-offs
 

@@ -32,6 +32,14 @@ final class GammaController {
     private let gammaTolerance: CGGammaValue = 0.003
     /// Multiplier change below which reapplying the table is pointless.
     private let factorEpsilon: Float = 0.005
+    /// Thresholds for the top-of-slider mode, measured in SDR white luminance
+    /// as a fraction of what the panel is rated for. The top notch of the
+    /// brightness keys sits at 1.0 and one notch down at about 0.83, so these
+    /// two values engage on the last notch alone and cannot chatter between
+    /// them. Releasing lower than it engages is what stops a rounding wobble at
+    /// the threshold from flipping the boost on and off.
+    private let engageFraction: Float = 0.97
+    private let releaseFraction: Float = 0.90
     private let defaultPollInterval: Duration = .milliseconds(500)
     private let fastPollInterval: Duration = .milliseconds(16)
     private let fastPollDuration: TimeInterval = 30
@@ -56,6 +64,8 @@ final class GammaController {
     private var engageTasks: [CGDirectDisplayID: Task<Void, Never>] = [:]
     private var fadeTasks: [CGDirectDisplayID: Task<Void, Never>] = [:]
     private var readyDisplays: Set<CGDirectDisplayID> = []
+    /// Displays whose slider is currently at the top, in top-of-slider mode.
+    private var atFullBrightness: Set<CGDirectDisplayID> = []
     private var failureCounts: [CGDirectDisplayID: Int] = [:]
     private var cooldownUntil: [CGDirectDisplayID: Date] = [:]
     private var fastPollUntil: Date?
@@ -127,6 +137,18 @@ final class GammaController {
         reevaluate()
     }
 
+    /// The user switched between the two boost curves. Forget where the
+    /// threshold last stood, then let every display settle to the new answer.
+    func boostCurveChanged() {
+        atFullBrightness.removeAll()
+        if isActive {
+            for id in readyDisplays {
+                applyFactor(displayId: id, animated: true)
+            }
+        }
+        onStateChange?()
+    }
+
     // MARK: - Reconciling intent with conditions
 
     private var thermalBlocks: Bool {
@@ -195,6 +217,7 @@ final class GammaController {
         triggers.removeAll()
 
         readyDisplays.removeAll()
+        atFullBrightness.removeAll()
 
         // Otherwise re-enabling would run into a cooldown left over from the
         // previous attempt and sit there silently for up to 30 seconds.
@@ -252,6 +275,7 @@ final class GammaController {
         triggers.removeValue(forKey: id)
 
         readyDisplays.remove(id)
+        atFullBrightness.remove(id)
         failureCounts.removeValue(forKey: id)
         cooldownUntil.removeValue(forKey: id)
     }
@@ -322,9 +346,39 @@ final class GammaController {
         guard maximumEdr > referenceEdr else { return 1 }
 
         let currentEdr = Float(screen.currentEDRHeadroom)
+
+        if Settings.shared.onlyAtFullBrightness {
+            return topOfSliderFactor(screen: screen, referenceEdr: referenceEdr,
+                                     bonusGamma: bonusGamma, currentEdr: currentEdr)
+        }
+
         let clamped = min(max(currentEdr, referenceEdr), maximumEdr)
         let full = 1 + bonusGamma * (1 - (clamped - referenceEdr) / (maximumEdr - referenceEdr))
         return 1 + (full - 1) * userBrightness
+    }
+
+    /// The display stays completely stock until the slider reaches the top,
+    /// and only then does the extra range appear — so the boost extends the
+    /// slider rather than rescaling it.
+    ///
+    /// Position is read from headroom rather than from any brightness API:
+    /// headroom is peak ÷ current SDR white and referenceEdr is peak ÷ rated
+    /// SDR white, so dividing one by the other gives current white as a
+    /// fraction of the panel's rating — exactly 1.0 at the top of the slider.
+    private func topOfSliderFactor(screen: NSScreen, referenceEdr: Float,
+                                   bonusGamma: Float, currentEdr: Float) -> Float {
+        guard let id = screen.displayId, currentEdr > 0 else { return 1 }
+
+        let fraction = min(1, referenceEdr / currentEdr)
+        let wasEngaged = atFullBrightness.contains(id)
+        let engaged = wasEngaged ? fraction >= releaseFraction : fraction >= engageFraction
+
+        if engaged != wasEngaged {
+            log.info("Display \(id) \(engaged ? "reached" : "left") full brightness")
+            if engaged { atFullBrightness.insert(id) } else { atFullBrightness.remove(id) }
+        }
+
+        return engaged ? 1 + bonusGamma * userBrightness : 1
     }
 
     private func applyFactor(displayId: CGDirectDisplayID, animated: Bool) {
@@ -343,7 +397,11 @@ final class GammaController {
 
         fadeTasks[displayId]?.cancel()
 
-        guard animated else {
+        // Small steps — the slider being dragged — land immediately, because a
+        // fade there would only lag behind the user. A large one is either the
+        // boost engaging at the top of the slider or letting go, and jumping
+        // the whole way at once reads as a flash, so it always gets the fade.
+        guard animated || abs(target - current) > 0.05 else {
             table.apply(to: displayId, factor: target)
             return
         }

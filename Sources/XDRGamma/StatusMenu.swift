@@ -14,6 +14,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     private let toggleItem = NSMenuItem()
     private let loginItem = NSMenuItem()
     private let thermalPrefItem = NSMenuItem()
+    private let fullBrightnessItem = NSMenuItem()
     private let hotkeyItem = NSMenuItem()
     private let statusLineItem = NSMenuItem()
     private let thermalLineItem = NSMenuItem()
@@ -73,6 +74,16 @@ final class StatusMenu: NSObject, NSMenuDelegate {
 
         menu.addItem(.separator())
 
+        fullBrightnessItem.title = "Only at Full Brightness"
+        fullBrightnessItem.target = self
+        fullBrightnessItem.action = #selector(fullBrightnessTapped)
+        fullBrightnessItem.toolTip = "Leave the display stock until the slider reaches "
+            + "the top, then hand over the extra range. Off blends the boost in across "
+            + "the whole slider."
+        menu.addItem(fullBrightnessItem)
+
+        menu.addItem(.separator())
+
         loginItem.title = "Launch at Login"
         loginItem.target = self
         loginItem.action = #selector(loginItemTapped)
@@ -129,6 +140,8 @@ final class StatusMenu: NSObject, NSMenuDelegate {
 
         thermalPrefItem.state = Settings.shared.disableOnThermalPressure ? .on : .off
 
+        fullBrightnessItem.state = Settings.shared.onlyAtFullBrightness ? .on : .off
+
         hotkeyItem.state = (hotkey?.isRegistered ?? false) ? .on : .off
 
         statusLineItem.title = controller.statusLine()
@@ -175,6 +188,12 @@ final class StatusMenu: NSObject, NSMenuDelegate {
 
     @objc private func sliderChanged() {
         controller.setUserBrightness(slider.floatValue)
+    }
+
+    @objc private func fullBrightnessTapped() {
+        Settings.shared.onlyAtFullBrightness.toggle()
+        controller.boostCurveChanged()
+        updateUI()
     }
 
     @objc private func hotkeyTapped() {

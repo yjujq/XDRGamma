@@ -16,6 +16,7 @@ final class Settings {
         static let disableOnThermalPressure = "disableOnThermalPressure"
         static let hideStatusIcon = "hideStatusIcon"
         static let hotkeyEnabled = "hotkeyEnabled"
+        static let onlyAtFullBrightness = "onlyAtFullBrightness"
     }
 
     private let defaults = UserDefaults.standard
@@ -26,7 +27,8 @@ final class Settings {
             Key.userBrightness: 1.0,
             Key.disableOnThermalPressure: true,
             Key.hideStatusIcon: false,
-            Key.hotkeyEnabled: true
+            Key.hotkeyEnabled: true,
+            Key.onlyAtFullBrightness: true
         ])
     }
 
@@ -57,5 +59,12 @@ final class Settings {
     var hotkeyEnabled: Bool {
         get { defaults.bool(forKey: Key.hotkeyEnabled) }
         set { defaults.set(newValue, forKey: Key.hotkeyEnabled) }
+    }
+
+    /// Leave the slider alone until it reaches the top, then hand over the
+    /// extra range. The alternative blends the boost in across the whole slider.
+    var onlyAtFullBrightness: Bool {
+        get { defaults.bool(forKey: Key.onlyAtFullBrightness) }
+        set { defaults.set(newValue, forKey: Key.onlyAtFullBrightness) }
     }
 }
