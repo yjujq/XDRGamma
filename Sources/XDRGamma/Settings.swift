@@ -15,7 +15,6 @@ final class Settings {
         static let userBrightness = "userBrightness"
         static let disableOnThermalPressure = "disableOnThermalPressure"
         static let hideStatusIcon = "hideStatusIcon"
-        static let hotkeyEnabled = "hotkeyEnabled"
         static let onlyAtFullBrightness = "onlyAtFullBrightness"
     }
 
@@ -27,7 +26,6 @@ final class Settings {
             Key.userBrightness: 1.0,
             Key.disableOnThermalPressure: true,
             Key.hideStatusIcon: false,
-            Key.hotkeyEnabled: true,
             Key.onlyAtFullBrightness: true
         ])
     }
@@ -53,12 +51,6 @@ final class Settings {
     var hideStatusIcon: Bool {
         get { defaults.bool(forKey: Key.hideStatusIcon) }
         set { defaults.set(newValue, forKey: Key.hideStatusIcon) }
-    }
-
-    /// System-wide shortcut for toggling the boost.
-    var hotkeyEnabled: Bool {
-        get { defaults.bool(forKey: Key.hotkeyEnabled) }
-        set { defaults.set(newValue, forKey: Key.hotkeyEnabled) }
     }
 
     /// Leave the slider alone until it reaches the top, then hand over the
