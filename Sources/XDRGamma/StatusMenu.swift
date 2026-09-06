@@ -88,7 +88,7 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         let event = NSApp.currentEvent
         let wantsMenu = event?.type == .rightMouseUp
             || event?.modifierFlags.contains(.control) == true
-        if wantsMenu { popUpMenu() } else { settings.show() }
+        if wantsMenu { popUpMenu() } else { showSettings() }
     }
 
     /// Attach, click, detach — the only way to pop a status item menu on demand
@@ -142,11 +142,11 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     }
 
     func showSettings() {
-        settings.show()
+        settings.show(anchor: statusItem.button?.window?.frame)
     }
 
     @objc private func settingsTapped() {
-        settings.show()
+        showSettings()
     }
 
     @objc private func quitTapped() {

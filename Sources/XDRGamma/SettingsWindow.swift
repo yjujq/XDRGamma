@@ -34,10 +34,12 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     // MARK: - Presenting
 
-    func show() {
+    /// `anchor` is the status item's frame in screen coordinates; the panel
+    /// hangs from it like a menu would.
+    func show(anchor: NSRect?) {
         if window == nil { build() }
         NSApp.activate(ignoringOtherApps: true)
-        window?.center()
+        position(under: anchor)
         window?.makeKeyAndOrderFront(nil)
         sync()
         refresh?.invalidate()
@@ -60,11 +62,34 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         refresh = nil
     }
 
+    /// A menu goes away when you click elsewhere, so this does too.
+    func windowDidResignKey(_ notification: Notification) {
+        close()
+    }
+
+    /// Hang the panel under the status item, nudged to stay on screen.
+    private func position(under anchor: NSRect?) {
+        guard let window else { return }
+        guard let anchor,
+              let screen = NSScreen.screens.first(where: { $0.frame.intersects(anchor) })
+                ?? NSScreen.main else {
+            window.center()
+            return
+        }
+        let size = window.frame.size
+        let gap: CGFloat = 6
+        var x = anchor.midX - size.width / 2
+        let visible = screen.visibleFrame
+        x = min(max(visible.minX + 8, x), visible.maxX - size.width - 8)
+        let y = min(anchor.minY, visible.maxY) - gap - size.height
+        window.setFrameOrigin(NSPoint(x: x, y: max(visible.minY + 8, y)))
+    }
+
     // MARK: - Building
 
     private func build() {
-        let width: CGFloat = 640
-        let w = KeyableWindow(contentRect: NSRect(x: 0, y: 0, width: width, height: 596),
+        let width: CGFloat = 460
+        let w = KeyableWindow(contentRect: NSRect(x: 0, y: 0, width: width, height: 566),
                               styleMask: [.borderless], backing: .buffered, defer: false)
         w.isOpaque = false
         w.backgroundColor = .clear
@@ -73,16 +98,11 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         w.isMovableByWindowBackground = true
         w.delegate = self
 
-        let root = NSView(frame: NSRect(x: 0, y: 0, width: width, height: 596))
+        let root = NSView(frame: NSRect(x: 0, y: 0, width: width, height: 566))
 
         panel.title = "XDR Gamma"
         panel.translatesAutoresizingMaskIntoConstraints = false
         root.addSubview(panel)
-
-        let close = RetroClose()
-        close.translatesAutoresizingMaskIntoConstraints = false
-        close.onClick = { [weak self] in self?.close() }
-        root.addSubview(close)
 
         let body = NSStackView()
         body.orientation = .vertical
@@ -93,35 +113,35 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
         // Blurb, centred like the reference.
         let blurb = Retro.label(
-            "This lifts the SDR brightness limit of the built-in XDR panel by "
-            + "holding it in HDR mode and scaling the display transfer table into "
-            + "the headroom that opens up. Public APIs only.",
-            size: 12.5, align: .center)
-        blurb.preferredMaxLayoutWidth = width - 120
+            "Lifts the SDR brightness ceiling of the built-in XDR panel "
+            + "by holding it in HDR mode and scaling the transfer table "
+            + "into the headroom that opens up.",
+            size: 12, align: .center)
+        blurb.preferredMaxLayoutWidth = width - 68
         body.addArrangedSubview(blurb)
         body.setCustomSpacing(20, after: blurb)
 
         boostCheck = RetroCheck(title: "Brightness boost",
-                                detail: "Ceiling 1000 nits, the panel's sustained rating") { [weak self] in
+                                detail: "Ceiling 1000 nits — the sustained rating") { [weak self] in
             self?.controller.toggle()
             self?.sync()
         }
         fullBrightnessCheck = RetroCheck(
             title: "Only at full brightness",
-            detail: "Stay stock until the slider reaches the top, then hand over the range") { [weak self] in
+            detail: "Stock until the slider reaches the top") { [weak self] in
             Settings.shared.onlyAtFullBrightness.toggle()
             self?.controller.boostCurveChanged()
             self?.sync()
         }
         thermalCheck = RetroCheck(
             title: "Pause when overheating",
-            detail: "Drop the boost while the system reports throttling") { [weak self] in
+            detail: "Dropped while the system throttles") { [weak self] in
             Settings.shared.disableOnThermalPressure.toggle()
             self?.controller.thermalPreferenceChanged()
             self?.sync()
         }
         loginCheck = RetroCheck(title: "Launch at login",
-                                detail: "Requires running from the .app bundle") { [weak self] in
+                                detail: "Needs the .app bundle") { [weak self] in
             self?.toggleLoginItem()
         }
 
@@ -145,7 +165,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         intensity.widthAnchor.constraint(equalTo: body.widthAnchor).isActive = true
         body.setCustomSpacing(24, after: intensity)
 
-        let rule = Retro.label(String(repeating: "─", count: 46), size: 12, color: Retro.dim)
+        let rule = Retro.label(String(repeating: "─", count: 38), size: 12, color: Retro.dim)
         body.addArrangedSubview(rule)
 
         statusField = Retro.label("", size: 12.5)
@@ -177,13 +197,8 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             panel.topAnchor.constraint(equalTo: root.topAnchor),
             panel.bottomAnchor.constraint(equalTo: root.bottomAnchor),
 
-            close.topAnchor.constraint(equalTo: root.topAnchor, constant: 10),
-            close.trailingAnchor.constraint(equalTo: root.trailingAnchor, constant: -12),
-            close.widthAnchor.constraint(equalToConstant: 34),
-            close.heightAnchor.constraint(equalToConstant: 34),
-
-            body.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 60),
-            body.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -60),
+            body.leadingAnchor.constraint(equalTo: panel.leadingAnchor, constant: 34),
+            body.trailingAnchor.constraint(equalTo: panel.trailingAnchor, constant: -34),
             body.topAnchor.constraint(equalTo: panel.topAnchor, constant: 54),
 
             buttons.centerXAnchor.constraint(equalTo: panel.centerXAnchor),

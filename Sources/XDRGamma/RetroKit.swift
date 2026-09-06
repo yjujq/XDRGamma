@@ -2,10 +2,10 @@
 //  RetroKit.swift
 //  XDRGamma
 //
-//  The look: a terminal panel drawn by hand — teal ground, double frame, a
-//  title cut into the top border, monospace throughout, and controls that are
-//  typography rather than widgets. Checkboxes are [x], the slider is a bar of
-//  blocks, buttons carry a hard offset shadow instead of a gradient.
+//  The look: a terminal panel drawn by hand — teal ground, a thin rule with the
+//  title cut into its top edge, monospace throughout, and controls that are
+//  typography rather than widgets. Checkboxes are [x], the slider is a run of
+//  cells, buttons carry a hard offset shadow instead of a gradient.
 //
 //  Nothing here uses a system control, because a stock NSButton or NSSlider
 //  would drag its own material and corner radius into the picture and break the
@@ -50,8 +50,8 @@ enum Retro {
 
 // MARK: - The panel
 
-/// Teal ground, indigo outer rule, a thin inner rule, and the title sitting in
-/// a black chip cut into the top of the inner rule.
+/// Teal ground, a thin rule inset from the edge, and the title sitting in a
+/// black chip cut into the top of that rule.
 final class RetroPanelView: NSView {
 
     var title: String = "" { didSet { needsDisplay = true } }
@@ -303,43 +303,5 @@ final class RetroBar: NSView {
 
         let pct = String(format: "%3.0f%%", value * 100)
         (pct as NSString).draw(at: NSPoint(x: CGFloat(cells + 3) * unit, y: 2), withAttributes: attrs)
-    }
-}
-
-// MARK: - Close control
-
-/// The bare ✕ that sits outside the panel, as in the reference.
-final class RetroClose: NSView {
-
-    var onClick: () -> Void = {}
-    private var hovering = false
-
-    override var isFlipped: Bool { true }
-    override var intrinsicContentSize: NSSize { NSSize(width: 34, height: 34) }
-
-    override func updateTrackingAreas() {
-        super.updateTrackingAreas()
-        trackingAreas.forEach(removeTrackingArea)
-        addTrackingArea(NSTrackingArea(rect: bounds,
-                                       options: [.mouseEnteredAndExited, .activeAlways],
-                                       owner: self))
-    }
-
-    override func mouseEntered(with event: NSEvent) { hovering = true; needsDisplay = true }
-    override func mouseExited(with event: NSEvent) { hovering = false; needsDisplay = true }
-    override func mouseDown(with event: NSEvent) {}
-    override func mouseUp(with event: NSEvent) { onClick() }
-    override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
-
-    override func draw(_ dirtyRect: NSRect) {
-        let p = NSBezierPath()
-        let i: CGFloat = 9
-        p.move(to: NSPoint(x: i, y: i))
-        p.line(to: NSPoint(x: bounds.width - i, y: bounds.height - i))
-        p.move(to: NSPoint(x: bounds.width - i, y: i))
-        p.line(to: NSPoint(x: i, y: bounds.height - i))
-        p.lineWidth = 2.5
-        (hovering ? NSColor.white : NSColor.white.withAlphaComponent(0.75)).setStroke()
-        p.stroke()
     }
 }

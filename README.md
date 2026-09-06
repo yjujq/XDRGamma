@@ -82,8 +82,8 @@ the panel up.
 
 ## The settings panel
 
-Everything else lives in one hand-drawn panel: teal ground, indigo rule, the
-title cut into the top border, monospace throughout. The controls are
+Everything else lives in one hand-drawn panel: teal ground, a thin rule with
+the title cut into its top edge, monospace throughout. The controls are
 typography rather than widgets — checkboxes are `[x]`, the intensity slider is a
 run of cells between brackets, and buttons carry a hard offset shadow that the
 face slides onto when pressed.
@@ -102,6 +102,10 @@ receives the matching `mouseUp`; each returns true from `acceptsFirstMouse`, so
 a click lands on the control rather than being swallowed as an activating click;
 and the window is an `NSWindow` subclass that returns true from `canBecomeKey`,
 which a borderless window otherwise refuses, along with closing on Escape.
+
+It behaves like a menu rather than a window: it hangs under the status item,
+has no close button, and goes away as soon as it stops being the key window —
+so clicking anywhere else dismisses it, exactly as a menu would.
 
 ## Layout
 
