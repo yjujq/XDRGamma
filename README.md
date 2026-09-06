@@ -75,9 +75,32 @@ swift build -c release
 
 A sun icon appears in the menu bar. The boost is **off** by default.
 
-The menu holds the toggle, an intensity slider and a diagnostics line,
-`Headroom current / potential · gamma ×factor`, which shows whether the panel
-has actually entered HDR mode.
+The menu keeps only what a menu is good at — the state at a glance, one click to
+flip the boost, and a way into **Settings…** (⌘,). Opening the app again while
+it is already running also brings the panel up.
+
+## The settings panel
+
+Everything else lives in one hand-drawn panel: teal ground, indigo rule, the
+title cut into the top border, monospace throughout. The controls are
+typography rather than widgets — checkboxes are `[x]`, the intensity slider is a
+run of cells between brackets, and buttons carry a hard offset shadow that the
+face slides onto when pressed.
+
+None of it uses a stock control, because an `NSButton` or `NSSlider` drags its
+own material and corner radius into the picture and breaks the look on sight.
+`RetroKit.swift` holds the pieces; `SettingsWindow.swift` assembles them.
+
+The diagnostics line at the foot, `Headroom current / potential · gamma ×factor`,
+updates once a second while the panel is open and shows whether the panel has
+actually entered HDR mode.
+
+Three details that are easy to get wrong with custom views: each one overrides
+`mouseDown` even where it does nothing, because a view that ignores it never
+receives the matching `mouseUp`; each returns true from `acceptsFirstMouse`, so
+a click lands on the control rather than being swallowed as an activating click;
+and the window is an `NSWindow` subclass that returns true from `canBecomeKey`,
+which a borderless window otherwise refuses, along with closing on Escape.
 
 ## Layout
 
@@ -86,7 +109,9 @@ has actually entered HDR mode.
 | `EDRTrigger.swift` | 1×1 window plus the Metal layer that holds HDR mode |
 | `GammaTable.swift` | Table capture, scaling, drift detection |
 | `GammaController.swift` | State machine: HDR ramp-up, factor, fade, hold |
-| `StatusMenu.swift` | Menu bar UI |
+| `StatusMenu.swift` | Menu bar item: state, quick toggle, way into settings |
+| `RetroKit.swift` | The terminal look: panel, buttons, `[x]` checks, cell bar |
+| `SettingsWindow.swift` | Every setting, assembled from RetroKit |
 | `AppDelegate.swift` | Gamma restore safety nets |
 | `ThermalMonitor.swift` | Thermal throttling watch |
 | `LoginItem.swift` | Launch at login via `SMAppService` |

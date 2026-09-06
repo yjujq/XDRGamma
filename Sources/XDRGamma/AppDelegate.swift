@@ -36,12 +36,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     /// Relaunching the already-running app is the only way to bring a hidden
-    /// menu bar icon back.
+    /// menu bar icon back, and the natural thing to expect from opening an app
+    /// that is already running is that it shows you something.
     func applicationShouldHandleReopen(
         _ sender: NSApplication,
         hasVisibleWindows: Bool
     ) -> Bool {
         menu.showIcon()
+        menu.showSettings()
         return true
     }
 
