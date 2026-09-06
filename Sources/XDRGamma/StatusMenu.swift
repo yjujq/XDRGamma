@@ -17,6 +17,9 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     private let settings: SettingsWindowController
     private let toggleItem = NSMenuItem()
     private let statusLineItem = NSMenuItem()
+    /// Held rather than attached: attaching a menu to the status item would
+    /// make every click open it, and the left click belongs to the panel.
+    private let menu = NSMenu()
 
     init(controller: GammaController) {
         self.controller = controller
@@ -31,6 +34,14 @@ final class StatusMenu: NSObject, NSMenuDelegate {
             MainActor.assumeIsolated { self?.hideIcon() }
         }
 
+        // The icon used to refresh only when the menu was opened, which was
+        // enough while every click opened it. Now that a click opens the panel
+        // instead, the icon has to follow the controller directly — otherwise a
+        // thermal pause would never show its thermometer.
+        controller.onStateChange = { [weak self] in
+            MainActor.assumeIsolated { self?.updateUI() }
+        }
+
         buildMenu()
         updateUI()
 
@@ -39,7 +50,6 @@ final class StatusMenu: NSObject, NSMenuDelegate {
     }
 
     private func buildMenu() {
-        let menu = NSMenu()
         menu.delegate = self
 
         toggleItem.title = "Enable"
@@ -65,7 +75,29 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         quit.target = self
         menu.addItem(quit)
 
+        // Left click opens the panel; the menu stays available on right click
+        // for a toggle without opening anything.
+        if let button = statusItem.button {
+            button.target = self
+            button.action = #selector(iconClicked)
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
+        }
+    }
+
+    @objc private func iconClicked() {
+        let event = NSApp.currentEvent
+        let wantsMenu = event?.type == .rightMouseUp
+            || event?.modifierFlags.contains(.control) == true
+        if wantsMenu { popUpMenu() } else { settings.show() }
+    }
+
+    /// Attach, click, detach — the only way to pop a status item menu on demand
+    /// without leaving it attached and losing the left click to it.
+    private func popUpMenu() {
+        updateUI()
         statusItem.menu = menu
+        statusItem.button?.performClick(nil)
+        statusItem.menu = nil
     }
 
     private func updateUI() {

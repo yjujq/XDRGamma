@@ -20,7 +20,6 @@ enum Retro {
 
     static let ground     = NSColor(srgbRed: 0.310, green: 0.624, blue: 0.635, alpha: 1) // teal
     static let ink        = NSColor.black
-    static let frame      = NSColor(srgbRed: 0.169, green: 0.169, blue: 0.776, alpha: 1) // indigo
     static let chipInk    = NSColor.white
     static let paper      = NSColor.white
     static let highlight  = NSColor(srgbRed: 0.949, green: 0.949, blue: 0.376, alpha: 1) // marker yellow
@@ -57,9 +56,7 @@ final class RetroPanelView: NSView {
 
     var title: String = "" { didSet { needsDisplay = true } }
 
-    private let outerWidth: CGFloat = 4
-    /// Deep enough that the title chip, which straddles this rule, still clears
-    /// the outer one above it.
+    /// Deep enough to leave the title chip room above the rule it straddles.
     private let innerInset: CGFloat = 19
 
     override var isFlipped: Bool { true }
@@ -69,11 +66,6 @@ final class RetroPanelView: NSView {
 
         Retro.ground.setFill()
         b.fill()
-
-        Retro.frame.setStroke()
-        let outer = NSBezierPath(rect: b.insetBy(dx: outerWidth / 2, dy: outerWidth / 2))
-        outer.lineWidth = outerWidth
-        outer.stroke()
 
         Retro.ink.setStroke()
         let inner = NSBezierPath(rect: b.insetBy(dx: innerInset, dy: innerInset))

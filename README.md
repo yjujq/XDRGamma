@@ -75,9 +75,10 @@ swift build -c release
 
 A sun icon appears in the menu bar. The boost is **off** by default.
 
-The menu keeps only what a menu is good at — the state at a glance, one click to
-flip the boost, and a way into **Settings…** (⌘,). Opening the app again while
-it is already running also brings the panel up.
+Clicking the icon opens the settings panel. Right-clicking it (or
+control-clicking) drops the small menu instead, for flipping the boost without
+opening anything. Opening the app again while it is already running also brings
+the panel up.
 
 ## The settings panel
 
