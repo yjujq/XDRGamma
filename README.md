@@ -104,8 +104,14 @@ and the window is an `NSWindow` subclass that returns true from `canBecomeKey`,
 which a borderless window otherwise refuses, along with closing on Escape.
 
 It behaves like a menu rather than a window: it hangs under the status item,
-has no close button, and goes away as soon as it stops being the key window —
-so clicking anywhere else dismisses it, exactly as a menu would.
+has no close button, and clicking anywhere else dismisses it.
+
+Clicking the icon again closes it, which is fussier than it sounds. The click
+makes the panel resign key *before* it reaches the icon's action, so the panel
+has already closed by then and simply calling "show" would reopen it — the icon
+would look like it did nothing. The action therefore asks whether the panel was
+dismissed within the last fraction of a second, not merely whether it is
+visible, and treats that as the closing half of a toggle.
 
 ## Layout
 

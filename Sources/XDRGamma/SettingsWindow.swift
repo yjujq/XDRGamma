@@ -15,6 +15,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private let controller: GammaController
     private var window: NSWindow?
     private var refresh: Timer?
+    private var outsideClicks: Any?
 
     private let panel = RetroPanelView()
     private var boostCheck: RetroCheck!
@@ -31,6 +32,12 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         self.controller = controller
         super.init()
     }
+
+    // Closing on NSApplication.didResignActive was tried and removed: an
+    // accessory app can lose active status a moment after activating it, and
+    // the panel shut itself the instant it opened. The global click monitor
+    // below dismisses on the case that actually matters — a click elsewhere —
+    // without depending on focus at all.
 
     // MARK: - Presenting
 
@@ -49,12 +56,36 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         }
         RunLoop.main.add(timer, forMode: .common)
         refresh = timer
+
+        watchForClicksOutside()
     }
 
     func close() {
         refresh?.invalidate()
         refresh = nil
+        if let outsideClicks {
+            NSEvent.removeMonitor(outsideClicks)
+            self.outsideClicks = nil
+        }
         window?.orderOut(nil)
+    }
+
+    /// Dismiss on a click anywhere else, the way a menu does.
+    ///
+    /// This is a *global* monitor on purpose. Closing on `windowDidResignKey`
+    /// looks equivalent and is not: clicking the status icon makes the panel
+    /// resign key first, so the panel closed and the click that followed
+    /// immediately reopened it — the icon appeared not to toggle at all. A
+    /// global monitor never sees events in our own process, so the status icon
+    /// is left to `iconClicked`, which toggles honestly. It also means an
+    /// NSAlert raised from the panel no longer dismisses it.
+    private func watchForClicksOutside() {
+        guard outsideClicks == nil else { return }
+        outsideClicks = NSEvent.addGlobalMonitorForEvents(
+            matching: [.leftMouseDown, .rightMouseDown, .otherMouseDown]
+        ) { [weak self] _ in
+            MainActor.assumeIsolated { self?.close() }
+        }
     }
 
     func windowWillClose(_ notification: Notification) {
@@ -62,8 +93,27 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         refresh = nil
     }
 
-    /// A menu goes away when you click elsewhere, so this does too.
+    var isVisible: Bool { window?.isVisible == true }
+
+    /// True for a moment after the panel dismissed itself.
+    ///
+    /// Clicking the status icon makes the panel resign key *before* the click
+    /// reaches the icon's action, so by then the panel has already closed and a
+    /// naive action would reopen it — the icon would appear not to toggle at
+    /// all, which is exactly the bug this exists to prevent. The action asks
+    /// this instead of asking whether the window is visible.
+    var justDismissed: Bool {
+        guard let dismissedAt else { return false }
+        return Date().timeIntervalSince(dismissedAt) < 0.35
+    }
+
+    private var dismissedAt: Date?
+
+    /// A menu goes away when you click elsewhere, and losing key is the most
+    /// reliable signal for that — the global monitor below does not see every
+    /// case, so both are kept.
     func windowDidResignKey(_ notification: Notification) {
+        dismissedAt = Date()
         close()
     }
 

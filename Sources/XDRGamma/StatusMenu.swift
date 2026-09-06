@@ -88,7 +88,15 @@ final class StatusMenu: NSObject, NSMenuDelegate {
         let event = NSApp.currentEvent
         let wantsMenu = event?.type == .rightMouseUp
             || event?.modifierFlags.contains(.control) == true
-        if wantsMenu { popUpMenu() } else { showSettings() }
+        if wantsMenu {
+            popUpMenu()
+        } else if settings.isVisible || settings.justDismissed {
+            // Either it is still up, or this very click closed it by taking key
+            // away — both mean the click is a dismissal, not a request to open.
+            settings.close()
+        } else {
+            showSettings()
+        }
     }
 
     /// Attach, click, detach — the only way to pop a status item menu on demand
