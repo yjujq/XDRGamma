@@ -75,10 +75,10 @@ swift build -c release
 
 A sun icon appears in the menu bar. The boost is **off** by default.
 
-Clicking the icon opens the settings panel. Right-clicking it (or
-control-clicking) drops the small menu instead, for flipping the boost without
-opening anything. Opening the app again while it is already running also brings
-the panel up.
+Clicking the icon opens the settings panel, and clicking it again closes it.
+There is no menu behind the icon at all — the panel holds every control one
+would have offered, and a second copy is only another surface to keep in sync.
+Opening the app again while it is already running also brings the panel up.
 
 ## The settings panel
 
@@ -120,7 +120,7 @@ visible, and treats that as the closing half of a toggle.
 | `EDRTrigger.swift` | 1×1 window plus the Metal layer that holds HDR mode |
 | `GammaTable.swift` | Table capture, scaling, drift detection |
 | `GammaController.swift` | State machine: HDR ramp-up, factor, fade, hold |
-| `StatusMenu.swift` | Menu bar item: state, quick toggle, way into settings |
+| `StatusItem.swift` | Menu bar icon: boost state, opens the panel |
 | `RetroKit.swift` | The terminal look: panel, buttons, `[x]` checks, cell bar |
 | `SettingsWindow.swift` | Every setting, assembled from RetroKit |
 | `AppDelegate.swift` | Gamma restore safety nets |

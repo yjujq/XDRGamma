@@ -14,12 +14,12 @@ private let emergencyRestore: @convention(c) () -> Void = {
 final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var controller: GammaController!
-    private var menu: StatusMenu!
+    private var statusItem: StatusItemController!
     private var signalSources: [DispatchSourceSignal] = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         controller = GammaController()
-        menu = StatusMenu(controller: controller)
+        statusItem = StatusItemController(controller: controller)
 
         installSafetyNets()
 
@@ -42,8 +42,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         _ sender: NSApplication,
         hasVisibleWindows: Bool
     ) -> Bool {
-        menu.showIcon()
-        menu.showSettings()
+        statusItem.showIcon()
+        statusItem.showSettings()
         return true
     }
 
