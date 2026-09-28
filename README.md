@@ -13,6 +13,16 @@ Get the extra brightness your MacBook Pro's XDR display keeps for HDR — for ev
 - Steps aside while Photos, Preview or QuickTime Player is in front, where HDR photos and clips live. Turn off **Pause for HDR apps** to keep it on.
 - Launch at login, and an optional hidden menu bar icon — open the app again to bring it back.
 
+## Manual
+
+<img src="docs/panel.jpg" width="420" alt="The XDRGamma panel: options, intensity and the headroom readout">
+
+1. **Click the sun** in the menu bar to open the panel; click it again, or anywhere else, to close it.
+2. **Press Enable** and push the brightness slider to the top — the screen gets brighter than macOS allows on its own.
+3. **Intensity** sets how far the boost goes. The options above it choose when it runs: only at full brightness, pausing when hot, launching at login, stepping aside for HDR apps.
+4. The line at the foot shows the **headroom** the display has opened and the gamma in use — proof the boost is on.
+5. **Hide Icon** removes the sun; open XDRGamma again to bring it back.
+
 ## Install
 
 1. Download **XDRGamma.zip**, unzip it and move **XDRGamma.app** to Applications.
