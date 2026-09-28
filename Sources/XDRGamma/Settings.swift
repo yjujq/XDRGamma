@@ -16,6 +16,7 @@ final class Settings {
         static let disableOnThermalPressure = "disableOnThermalPressure"
         static let hideStatusIcon = "hideStatusIcon"
         static let onlyAtFullBrightness = "onlyAtFullBrightness"
+        static let pauseForIncompatibleApps = "pauseForIncompatibleApps"
     }
 
     private let defaults = UserDefaults.standard
@@ -26,7 +27,8 @@ final class Settings {
             Key.userBrightness: 1.0,
             Key.disableOnThermalPressure: true,
             Key.hideStatusIcon: false,
-            Key.onlyAtFullBrightness: true
+            Key.onlyAtFullBrightness: true,
+            Key.pauseForIncompatibleApps: true
         ])
     }
 
@@ -58,5 +60,13 @@ final class Settings {
     var onlyAtFullBrightness: Bool {
         get { defaults.bool(forKey: Key.onlyAtFullBrightness) }
         set { defaults.set(newValue, forKey: Key.onlyAtFullBrightness) }
+    }
+
+    /// Drop the boost while Photos, Preview or QuickTime Player is frontmost —
+    /// the gamma table clips their HDR content otherwise. See
+    /// IncompatibleAppMonitor.
+    var pauseForIncompatibleApps: Bool {
+        get { defaults.bool(forKey: Key.pauseForIncompatibleApps) }
+        set { defaults.set(newValue, forKey: Key.pauseForIncompatibleApps) }
     }
 }

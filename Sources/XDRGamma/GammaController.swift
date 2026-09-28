@@ -56,11 +56,15 @@ final class GammaController {
     private(set) var isActive = false
     /// Boost dropped because of heat; it will return by itself.
     private(set) var isThermallySuspended = false
+    /// Boost dropped because an incompatible app (Photos, Preview, QuickTime
+    /// Player) is frontmost; it will return once you switch away.
+    private(set) var isAppSuspended = false
 
     /// User intensity, 0...1.
     private(set) var userBrightness: Float = 1.0
 
     let thermal = ThermalMonitor()
+    let appMonitor = IncompatibleAppMonitor()
 
     private var savedTables: [CGDirectDisplayID: GammaTable] = [:]
     private var triggers: [CGDirectDisplayID: EDRTriggerController] = [:]
@@ -99,6 +103,12 @@ final class GammaController {
         thermal.onChange = { [weak self] in
             guard let self else { return }
             log.info("Thermal state: \(self.thermal.localizedState)")
+            self.reevaluate()
+        }
+
+        appMonitor.onChange = { [weak self] in
+            guard let self else { return }
+            log.info("Frontmost app incompatible: \(self.appMonitor.isFrontmostIncompatible)")
             self.reevaluate()
         }
     }
@@ -140,6 +150,11 @@ final class GammaController {
         reevaluate()
     }
 
+    /// The user flipped the incompatible-app preference — recompute.
+    func incompatibleAppPreferenceChanged() {
+        reevaluate()
+    }
+
     /// The user switched between the two boost curves. Forget where the
     /// threshold last stood, then let every display settle to the new answer.
     func boostCurveChanged() {
@@ -158,17 +173,30 @@ final class GammaController {
         Settings.shared.disableOnThermalPressure && thermal.isUnderPressure
     }
 
+    private var appBlocks: Bool {
+        Settings.shared.pauseForIncompatibleApps && appMonitor.isFrontmostIncompatible
+    }
+
     private func reevaluate() {
-        let blocked = thermalBlocks
+        let blocked = thermalBlocks || appBlocks
         let shouldRun = isUserEnabled && !blocked
 
         let wasSuspended = isThermallySuspended
-        isThermallySuspended = isUserEnabled && blocked
+        isThermallySuspended = isUserEnabled && thermalBlocks
 
         if isThermallySuspended && !wasSuspended {
             log.info("Throttling (\(self.thermal.localizedState)) — dropping the boost")
         } else if !isThermallySuspended && wasSuspended {
             log.info("Temperature back to normal — restoring the boost")
+        }
+
+        let wasAppSuspended = isAppSuspended
+        isAppSuspended = isUserEnabled && appBlocks
+
+        if isAppSuspended && !wasAppSuspended {
+            log.info("\(self.appMonitor.frontmostLocalizedName ?? "Incompatible app") frontmost — dropping the boost")
+        } else if !isAppSuspended && wasAppSuspended {
+            log.info("Left the incompatible app — restoring the boost")
         }
 
         if shouldRun {
@@ -520,6 +548,9 @@ final class GammaController {
     func statusLine() -> String {
         if isThermallySuspended {
             return "Paused: \(thermal.localizedState)"
+        }
+        if isAppSuspended {
+            return "Paused: \(appMonitor.frontmostLocalizedName ?? "incompatible app")"
         }
         guard let screen = diagnosticsScreen else { return "No display found" }
         let current = String(format: "%.2f", screen.currentEDRHeadroom)

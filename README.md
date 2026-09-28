@@ -10,6 +10,7 @@ Get the extra brightness your MacBook Pro's XDR display keeps for HDR — for ev
 - Below the top of the slider the display is left exactly as it was. Turn off **Only at Full Brightness** to spread the boost across the whole slider instead.
 - Invisible to screenshots and screen recordings, and light on the CPU (about 0.24%).
 - Pauses itself while the Mac is running hot, and comes back when it cools down.
+- Steps aside while Photos, Preview or QuickTime Player is in front, where HDR photos and clips live. Turn off **Pause for HDR apps** to keep it on.
 - Launch at login, and an optional hidden menu bar icon — open the app again to bring it back.
 
 ## Install
@@ -28,7 +29,7 @@ None.
 
 ## Good to know
 
-- While the boost is on, HDR video and photos lose their brightest highlights. Turn it off before a film.
+- While the boost is on, HDR video and photos lose their brightest highlights. Turn it off before a film, or leave **Pause for HDR apps** on.
 - If the screen ever stays too bright after a crash, reset it:
 
   ```sh

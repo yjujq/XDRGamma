@@ -70,6 +70,8 @@ final class StatusItemController: NSObject {
         let symbol: String
         if controller.isThermallySuspended {
             symbol = "thermometer.high"
+        } else if controller.isAppSuspended {
+            symbol = "photo"
         } else if controller.isActive {
             symbol = "sun.max.fill"
         } else {

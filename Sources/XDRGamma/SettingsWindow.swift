@@ -21,6 +21,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private var boostCheck: RetroCheck!
     private var fullBrightnessCheck: RetroCheck!
     private var thermalCheck: RetroCheck!
+    private var appPauseCheck: RetroCheck!
     private var loginCheck: RetroCheck!
     private var intensity: RetroBar!
     private var intensityCaption: NSTextField!
@@ -139,7 +140,8 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     private func build() {
         let width: CGFloat = 460
-        let w = KeyableWindow(contentRect: NSRect(x: 0, y: 0, width: width, height: 566),
+        let height: CGFloat = 618
+        let w = KeyableWindow(contentRect: NSRect(x: 0, y: 0, width: width, height: height),
                               styleMask: [.borderless], backing: .buffered, defer: false)
         w.isOpaque = false
         w.backgroundColor = .clear
@@ -148,7 +150,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         w.isMovableByWindowBackground = true
         w.delegate = self
 
-        let root = NSView(frame: NSRect(x: 0, y: 0, width: width, height: 566))
+        let root = NSView(frame: NSRect(x: 0, y: 0, width: width, height: height))
 
         panel.title = "XDR Gamma"
         panel.translatesAutoresizingMaskIntoConstraints = false
@@ -190,12 +192,19 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             self?.controller.thermalPreferenceChanged()
             self?.sync()
         }
+        appPauseCheck = RetroCheck(
+            title: "Pause for HDR apps",
+            detail: "Photos, Preview, QuickTime Player clip otherwise") { [weak self] in
+            Settings.shared.pauseForIncompatibleApps.toggle()
+            self?.controller.incompatibleAppPreferenceChanged()
+            self?.sync()
+        }
         loginCheck = RetroCheck(title: "Launch at login",
                                 detail: "Needs the .app bundle") { [weak self] in
             self?.toggleLoginItem()
         }
 
-        for c in [boostCheck!, fullBrightnessCheck!, thermalCheck!, loginCheck!] {
+        for c in [boostCheck!, fullBrightnessCheck!, thermalCheck!, appPauseCheck!, loginCheck!] {
             c.translatesAutoresizingMaskIntoConstraints = false
             body.addArrangedSubview(c)
             c.widthAnchor.constraint(equalTo: body.widthAnchor).isActive = true
@@ -266,6 +275,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         boostCheck?.isOn = controller.isUserEnabled
         fullBrightnessCheck?.isOn = Settings.shared.onlyAtFullBrightness
         thermalCheck?.isOn = Settings.shared.disableOnThermalPressure
+        appPauseCheck?.isOn = Settings.shared.pauseForIncompatibleApps
 
         loginCheck?.isOn = LoginItem.isEnabled
         loginCheck?.isEnabled = LoginItem.status != .notFound
