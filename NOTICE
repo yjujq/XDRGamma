@@ -1,0 +1,14 @@
+XDRGamma
+Copyright (C) 2026 yjujq
+
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free Software
+Foundation, either version 3 of the License, or (at your option) any later
+version. It is distributed WITHOUT ANY WARRANTY; see the LICENSE file for the
+full text.
+
+Parts of it follow BrightIntosh by niklasr22
+(https://github.com/niklasr22/BrightIntosh), itself licensed under the GNU
+General Public License v3.0: the overall brightness state machine and the list
+of panels whose SDR white is about 600 nits. The source of every released
+build is the tagged commit in this repository.

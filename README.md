@@ -48,3 +48,11 @@ Swift, public APIs only.
 [BrightIntosh](https://github.com/niklasr22/BrightIntosh) ·
 [BetterDisplay wiki](https://github.com/waydabber/BetterDisplay/wiki/XDR-and-HDR-brightness-upscaling) ·
 [Explore HDR rendering with EDR, WWDC21](https://developer.apple.com/videos/play/wwdc2021/10161/)
+
+## Privacy
+
+XDRGamma collects nothing and makes no network connections.
+
+## License
+
+GPL-3.0 — see [LICENSE](LICENSE) and [NOTICE](NOTICE). Parts of it follow [BrightIntosh](https://github.com/niklasr22/BrightIntosh), which is GPL-3.0 as well.
