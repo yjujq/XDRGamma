@@ -150,4 +150,4 @@ for (pt, scale) in [(16, 1), (16, 2), (32, 1), (32, 2), (128, 1), (128, 2),
     let name = scale == 1 ? "icon_\(pt)x\(pt).png" : "icon_\(pt)x\(pt)@2x.png"
     write(draw(size: px), to: iconset.appendingPathComponent(name))
 }
-print("AppIcon.iconset готов")
+print("AppIcon.iconset is ready")
